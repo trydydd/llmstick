@@ -96,9 +96,19 @@ detect_supported_cache_types() {
     local allowed_line=""
 
     RUNTIME_HELP_OUTPUT="$("$candidate" --help 2>&1 || true)"
-    allowed_line="$(printf '%s\n' "$RUNTIME_HELP_OUTPUT" | grep -Eim1 'allowed values: .*f16')"
+    allowed_line="$(
+        printf '%s\n' "$RUNTIME_HELP_OUTPUT" | awk '
+            /--cache-type-k/ { in_block=1; next }
+            in_block && /allowed values:/ {
+                sub(/^.*allowed values:[[:space:]]*/, "")
+                print
+                exit
+            }
+            in_block && /^[^[:space:]]/ { exit }
+        '
+    )"
     if [ -n "$allowed_line" ]; then
-        SUPPORTED_CACHE_TYPES="$(printf '%s\n' "$allowed_line" | sed -E 's/.*allowed values:[[:space:]]*//; s/,/ /g' | tr -s '[:space:]' ' ' | sed -E 's/^ //; s/ $//')"
+        SUPPORTED_CACHE_TYPES="$(printf '%s\n' "$allowed_line" | tr ',' ' ' | tr -s '[:space:]' ' ' | sed -E 's/^ //; s/ $//')"
     else
         SUPPORTED_CACHE_TYPES=""
     fi
