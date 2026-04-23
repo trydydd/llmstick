@@ -27,6 +27,7 @@ resolve_binary() {
     local root="$1"
     local name="$2"
     local candidate=""
+    local -a candidates=()
 
     if [ -x "$root/bin/$name" ]; then
         printf '%s\n' "$root/bin/$name"
@@ -38,17 +39,21 @@ resolve_binary() {
         return 0
     fi
 
-    candidate="$(find "$root" -mindepth 2 -maxdepth 3 -type f -path "*/bin/$name" -print -quit 2>/dev/null || true)"
-    if [ -n "$candidate" ] && [ -x "$candidate" ]; then
-        printf '%s\n' "$candidate"
-        return 0
-    fi
+    shopt -s nullglob
+    candidates=(
+        "$root"/*/bin/"$name"
+        "$root"/*/"$name"
+        "$root"/*/*/bin/"$name"
+        "$root"/*/*/"$name"
+    )
+    shopt -u nullglob
 
-    candidate="$(find "$root" -mindepth 2 -maxdepth 3 -type f -name "$name" -print -quit 2>/dev/null || true)"
-    if [ -n "$candidate" ] && [ -x "$candidate" ]; then
-        printf '%s\n' "$candidate"
-        return 0
-    fi
+    for candidate in "${candidates[@]}"; do
+        if [ -x "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
 
     return 1
 }
