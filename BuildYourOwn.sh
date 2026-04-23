@@ -302,7 +302,7 @@ extract_tarball() {
   local copy_source=""
   local wrapper_dir=""
   local wrapper_name=""
-  local entry_count=0
+  local -a top_level_entries=()
   local -a tar_parts=()
 
   require_cmd tar
@@ -360,17 +360,12 @@ extract_tarball() {
   done < <(find "$staging_dir" -mindepth 1 -print)
 
   copy_source="$staging_dir"
-  while IFS= read -r extracted_path; do
-    entry_count=$((entry_count + 1))
-    if (( entry_count == 1 )); then
-      wrapper_dir="$extracted_path"
-    else
-      wrapper_dir=""
-      break
-    fi
-  done < <(find "$staging_dir" -mindepth 1 -maxdepth 1 -print)
+  mapfile -t top_level_entries < <(find "$staging_dir" -mindepth 1 -maxdepth 1 -print | head -n 2)
+  if (( ${#top_level_entries[@]} == 1 )); then
+    wrapper_dir="${top_level_entries[0]}"
+  fi
 
-  if (( entry_count == 1 )) && [[ -d "$wrapper_dir" ]]; then
+  if [[ -n "$wrapper_dir" && -d "$wrapper_dir" ]]; then
     wrapper_name="$(basename -- "$wrapper_dir")"
     if [[ "$wrapper_name" == llama-* ]]; then
       copy_source="$wrapper_dir"
