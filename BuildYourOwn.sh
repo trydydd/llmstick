@@ -276,6 +276,8 @@ extract_tarball() {
   local tar_link_target=""
   local link_parent=""
   local canonical_link_target=""
+  local rsync_error_log=""
+  local rsync_error_message=""
   local canonical_root=""
   local canonical_destination=""
   local extracted_path=""
@@ -337,10 +339,14 @@ extract_tarball() {
 
   rm -rf "$destination"
   mkdir -p "$destination"
-  if ! rsync -aL "$staging_dir"/ "$destination"/; then
+  rsync_error_log="$(mktemp "$temp_root/rsync.XXXXXX")"
+  if ! rsync -aL "$staging_dir"/ "$destination"/ 2>"$rsync_error_log"; then
+    rsync_error_message="$(tr '\n' ' ' < "$rsync_error_log" | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')"
+    rm -f "$rsync_error_log"
     rm -rf "$staging_dir"
-    fail "Failed to copy runtime from staging directory to $destination"
+    fail "Failed to copy runtime from staging directory to $destination${rsync_error_message:+: $rsync_error_message}"
   fi
+  rm -f "$rsync_error_log"
 
   while IFS= read -r extracted_path; do
     canonical_extracted_path="$(realpath -m "$extracted_path")"
