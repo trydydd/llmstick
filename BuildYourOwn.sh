@@ -22,6 +22,8 @@ LLAMA_CPP_RUNTIME_VERSION="${LLAMA_CPP_RUNTIME_VERSION:-b8893}"
 ROTORQUANT_LLAMA_CPP_REPO="${ROTORQUANT_LLAMA_CPP_REPO:-johndpope/llama-cpp-turboquant}"
 ROTORQUANT_LLAMA_CPP_BRANCH="${ROTORQUANT_LLAMA_CPP_BRANCH:-feature/planarquant-kv-cache}"
 ROTORQUANT_LLAMA_CPP_COMMIT="${ROTORQUANT_LLAMA_CPP_COMMIT:-20efe75}"
+# Set to "false" to skip the source build and download a pre-built runtime instead.
+ROTORQUANT_BUILD_RUNTIME="${ROTORQUANT_BUILD_RUNTIME:-true}"
 LLAMA_CPP_RUNTIME_ARCH="${LLAMA_CPP_RUNTIME_ARCH:-$(uname -m 2>/dev/null || printf 'unknown')}"
 
 case "$LLAMA_CPP_RUNTIME_ARCH" in
@@ -78,6 +80,7 @@ Environment overrides:
   ROTORQUANT_LLAMA_CPP_REPO
   ROTORQUANT_LLAMA_CPP_BRANCH
   ROTORQUANT_LLAMA_CPP_COMMIT
+  ROTORQUANT_BUILD_RUNTIME    Set to "false" to skip source build and use pre-built runtime
   Q8_URL
   Q4_URL
   THINKING_Q8_URL
@@ -100,6 +103,96 @@ fail() {
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+}
+
+check_build_deps_available() {
+  local missing=()
+  for dep in git cmake make gcc g++; do
+    command -v "$dep" >/dev/null 2>&1 || missing+=("$dep")
+  done
+  if (( ${#missing[@]} > 0 )); then
+    log "Missing build tools: ${missing[*]}"
+    return 1
+  fi
+  return 0
+}
+
+build_rotorquant_runtime() {
+  local destination="$1"
+  shift
+  local -a extra_cmake_args=("$@")
+  local src_dir="$TMPDIR/rotorquant-src"
+  local build_dir="$TMPDIR/rotorquant-build"
+  local stamp_file="$destination/.rotorquant-build-commit"
+
+  # Skip if already built at the same commit.
+  if [[ -f "$stamp_file" ]] && [[ "$(cat "$stamp_file" 2>/dev/null)" == "$ROTORQUANT_LLAMA_CPP_COMMIT" ]]; then
+    if [[ -x "$destination/bin/llama-cli" ]]; then
+      log "Rotorquant runtime already built at commit $ROTORQUANT_LLAMA_CPP_COMMIT, skipping rebuild"
+      return 0
+    fi
+  fi
+
+  if [[ ! -d "$src_dir/.git" ]]; then
+    log "Cloning $ROTORQUANT_LLAMA_CPP_REPO (branch: $ROTORQUANT_LLAMA_CPP_BRANCH)"
+    git clone --depth 50 \
+      --branch "$ROTORQUANT_LLAMA_CPP_BRANCH" \
+      "https://github.com/$ROTORQUANT_LLAMA_CPP_REPO.git" \
+      "$src_dir" || return 1
+  fi
+
+  log "Checking out pinned commit: $ROTORQUANT_LLAMA_CPP_COMMIT"
+  git -C "$src_dir" checkout "$ROTORQUANT_LLAMA_CPP_COMMIT" || return 1
+
+  mkdir -p "$build_dir"
+
+  log "Configuring rotorquant llama.cpp build..."
+  cmake \
+    -B "$build_dir" \
+    -S "$src_dir" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DLLAMA_BUILD_TESTS=OFF \
+    -DLLAMA_BUILD_EXAMPLES=ON \
+    -DCMAKE_INSTALL_PREFIX="$destination" \
+    "${extra_cmake_args[@]}" || return 1
+
+  local nproc_count
+  nproc_count="$(nproc 2>/dev/null || echo 2)"
+  log "Compiling llama.cpp (using $nproc_count jobs — this may take several minutes)..."
+  cmake --build "$build_dir" --config Release -j"$nproc_count" || return 1
+
+  log "Installing rotorquant runtime to $destination..."
+  cmake --install "$build_dir" || return 1
+
+  printf '%s\n' "$ROTORQUANT_LLAMA_CPP_COMMIT" > "$stamp_file"
+  return 0
+}
+
+install_rotorquant_cpu_runtime() {
+  local destination="$1"
+
+  if [[ "$ROTORQUANT_BUILD_RUNTIME" != "true" ]]; then
+    log "ROTORQUANT_BUILD_RUNTIME=false: using pre-built package instead of source build"
+    [[ -n "$LLAMA_CPP_CPU_PACKAGE_URL" ]] || fail "No default CPU runtime package URL. Set LLAMA_CPP_CPU_PACKAGE_URL explicitly."
+    install_runtime_package "CPU runtime" "$LLAMA_CPP_CPU_PACKAGE_URL" "$destination"
+    return
+  fi
+
+  if ! check_build_deps_available; then
+    log "Build tools unavailable — falling back to pre-built CPU package"
+    [[ -n "$LLAMA_CPP_CPU_PACKAGE_URL" ]] || fail "No default CPU runtime package URL. Set LLAMA_CPP_CPU_PACKAGE_URL explicitly."
+    install_runtime_package "CPU runtime" "$LLAMA_CPP_CPU_PACKAGE_URL" "$destination"
+    return
+  fi
+
+  log "Building rotorquant-compatible llama.cpp from source (CPU)"
+  if build_rotorquant_runtime "$destination"; then
+    log "Rotorquant CPU runtime built and installed successfully"
+  else
+    log "Rotorquant source build failed — falling back to pre-built CPU package"
+    [[ -n "$LLAMA_CPP_CPU_PACKAGE_URL" ]] || fail "No default CPU runtime package URL. Set LLAMA_CPP_CPU_PACKAGE_URL explicitly."
+    install_runtime_package "CPU runtime" "$LLAMA_CPP_CPU_PACKAGE_URL" "$destination"
+  fi
 }
 
 confirm() {
@@ -434,7 +527,7 @@ download_required_assets() {
   log "Checking local assets in $HOME/Download (preferred), then $HOME/Downloads"
 
   [[ -n "$LLAMA_CPP_CPU_PACKAGE_URL" ]] || fail "No default CPU runtime package is defined for architecture '$LLAMA_CPP_RUNTIME_ARCH'. Set LLAMA_CPP_CPU_PACKAGE_URL explicitly."
-  install_runtime_package "CPU runtime" "$LLAMA_CPP_CPU_PACKAGE_URL" "$system_dir/runtime-cpu"
+  install_rotorquant_cpu_runtime "$system_dir/runtime-cpu"
 
   if [[ -n "$LLAMA_CPP_CUDA_PACKAGE_URL" ]]; then
     install_runtime_package "CUDA runtime" "$LLAMA_CPP_CUDA_PACKAGE_URL" "$system_dir/runtime-cuda"
@@ -474,6 +567,10 @@ download_required_assets() {
 
 print_summary() {
   local accelerated_summary="(not installed)"
+  local cpu_runtime_summary="llama.cpp CLI + server (pre-built package)"
+  if [[ "$ROTORQUANT_BUILD_RUNTIME" == "true" ]] && [[ -f "$TARGET_DIR/.system/runtime-cpu/.rotorquant-build-commit" ]]; then
+    cpu_runtime_summary="llama.cpp CLI + server (rotorquant build from source)"
+  fi
   if [[ -d "$TARGET_DIR/.system/runtime-cuda" ]]; then
     accelerated_summary="runtime-cuda/ (accelerated Linux llama.cpp package)"
   fi
@@ -486,22 +583,23 @@ Target: $TARGET_DIR
 Created/updated: $TARGET_DIR/.system/
 
 Installed files:
-- runtime-cpu/ (llama.cpp CLI + server package)
+- runtime-cpu/ ($cpu_runtime_summary)
 - $accelerated_summary
 - Qwen3-4B-Instruct-2507-abliterated.Q8_0.gguf
 - Qwen3-4B-Instruct-2507-abliterated.Q4_K_M.gguf
 - Qwen3-4B-Thinking-2507-abliterated.Q8_0.gguf
 - Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf
 
-Pinned default runtime package source:
-- repo: $LLAMA_CPP_RUNTIME_REPO
-- release: $LLAMA_CPP_RUNTIME_VERSION
-- platform: ${LLAMA_CPP_RUNTIME_PLATFORM:-override-required}
-
-Rotorquant reference source:
+Rotorquant runtime source:
 - repo: $ROTORQUANT_LLAMA_CPP_REPO
 - branch: $ROTORQUANT_LLAMA_CPP_BRANCH
 - commit: $ROTORQUANT_LLAMA_CPP_COMMIT
+- build from source: $ROTORQUANT_BUILD_RUNTIME
+
+Pre-built fallback package source:
+- repo: $LLAMA_CPP_RUNTIME_REPO
+- release: $LLAMA_CPP_RUNTIME_VERSION
+- platform: ${LLAMA_CPP_RUNTIME_PLATFORM:-override-required}
 
 Next step:
 - Eject the USB drive safely, plug into target Linux machine, run LinuxLaunch.sh.
