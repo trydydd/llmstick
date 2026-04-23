@@ -285,7 +285,6 @@ if [ "$MODEL_PROFILE_REQUEST" = "thinking" ]; then
         SELECTED_MODEL="$MODEL_THINKING"
         MODE_NAME="Thinking Mode [Q8]"
     else
-        SELECTED_MODEL="$DEFAULT_MODEL"
         case "$DEFAULT_MODE_NAME" in
             "High Performance [Q8]") MODE_NAME="Fallback from Thinking [Q8]" ;;
             "Efficiency Mode [Q4]") MODE_NAME="Fallback from Thinking [Q4]" ;;
