@@ -190,12 +190,17 @@ cache_type_supported() {
 
 best_quantized_cache_type() {
     local candidate=""
+    local checked_cache_types=" "
     local -a rotorquant_candidates=()
 
     [ -n "$KV_ROTATION" ] && rotorquant_candidates+=("$KV_ROTATION")
     rotorquant_candidates+=(planar3 turbo3 iso3)
 
     for candidate in "${rotorquant_candidates[@]}"; do
+        case "$checked_cache_types" in
+            *" $candidate "*) continue ;;
+        esac
+        checked_cache_types="${checked_cache_types}${candidate} "
         if cache_type_supported "$candidate"; then
             printf '%s\n' "$candidate"
             return 0
@@ -204,9 +209,11 @@ best_quantized_cache_type() {
 
     for candidate in $SUPPORTED_CACHE_TYPES; do
         case "$candidate" in
-            planar3|turbo3|iso3)
-                ;;
             planar*|turbo*|iso*)
+                case "$checked_cache_types" in
+                    *" $candidate "*) continue ;;
+                esac
+                checked_cache_types="${checked_cache_types}${candidate} "
                 if cache_type_supported "$candidate"; then
                     printf '%s\n' "$candidate"
                     return 0
