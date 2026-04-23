@@ -90,17 +90,25 @@ runtime_library_path_for_binary() {
     local candidate="$1"
     local binary_dir=""
     local runtime_root=""
+    local runtime_root_has_shared_libs="false"
     local path_candidate=""
     local library_path=""
 
     [ -n "$candidate" ] || return 0
     binary_dir="$(cd "$(dirname "$candidate")" 2>/dev/null && pwd -P)" || return 0
     runtime_root="$(cd "$binary_dir/.." 2>/dev/null && pwd -P)" || return 0
+    if [ -n "$(find "$runtime_root" -maxdepth 1 -type f \( -name '*.so' -o -name '*.so.*' \) -print -quit)" ]; then
+        runtime_root_has_shared_libs="true"
+    fi
+
+    should_include_library_path() {
+        local path_candidate="$1"
+        [ -d "$path_candidate" ] || return 1
+        [ "$path_candidate" != "$runtime_root" ] || [ "$runtime_root_has_shared_libs" = "true" ]
+    }
 
     for path_candidate in "$runtime_root/lib" "$runtime_root/lib64" "$runtime_root"; do
-        if [ -d "$path_candidate" ] && {
-            [ "$path_candidate" != "$runtime_root" ] || [ -n "$(find "$path_candidate" -maxdepth 1 -type f \( -name '*.so' -o -name '*.so.*' \) -print -quit)" ]
-        }; then
+        if should_include_library_path "$path_candidate"; then
             if [ -n "$library_path" ]; then
                 library_path="${library_path}:$path_candidate"
             else
