@@ -234,7 +234,7 @@ download_file() {
     fi
 
     log "Retrying download ($(basename -- "$output"), attempt $((attempt + 1))/$attempts)"
-    retry_delay=$((attempt * 2))
+    retry_delay=$((2 ** attempt))
     sleep "$retry_delay"
     ((attempt++))
   done
