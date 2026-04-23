@@ -20,7 +20,7 @@ MODEL_THINKING="$SYSTEM_DIR/Qwen3-4B-Thinking-2507-abliterated.Q8_0.gguf"
 MODEL_CODER="$SYSTEM_DIR/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf"
 CTX_SIZE="${LLMSTICK_CTX_SIZE:-8192}"
 KV_PROFILE_REQUEST="${LLMSTICK_KV_PROFILE:-auto}"
-KV_ROTATION="${LLMSTICK_KV_ROTATION:-planar3}"
+KV_ROTATION="${LLMSTICK_KV_ROTATION:-turbo3}"
 MODEL_PROFILE_REQUEST="${LLMSTICK_MODEL_PROFILE:-auto}"
 ENGINE_FALLBACK_MODE="false"
 ENGINE_VARIANT=""
@@ -217,7 +217,7 @@ best_quantized_cache_type() {
     local -a rotorquant_candidates=()
 
     [ -n "$KV_ROTATION" ] && rotorquant_candidates+=("$KV_ROTATION")
-    rotorquant_candidates+=(planar3 turbo3 iso3)
+    rotorquant_candidates+=(turbo3 planar3 iso3)
 
     for candidate in "${rotorquant_candidates[@]}"; do
         case "$checked_cache_types" in

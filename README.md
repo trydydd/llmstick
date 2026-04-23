@@ -72,10 +72,10 @@ That makes it easy to reuse existing llama.cpp forks or build repos that already
    - `runtime-cuda/` when a CUDA-capable NVIDIA stack is available
    - `runtime-cpu/` otherwise
 7. A KV-cache profile is selected:
-   - `auto` → prefer rotorquant `planar3/f16`; if the selected runtime does not advertise rotorquant cache types, use a supported quantized fallback instead
+   - `auto` → prefer rotorquant `turbo3/f16`; if the selected runtime does not advertise rotorquant cache types, use a supported quantized fallback instead
    - `compatibility` → `f16/f16`
-   - `memory-saver` → prefer `planar3/f16` (or `iso3/f16` if `LLMSTICK_KV_ROTATION=iso3`), otherwise use a supported quantized fallback
-   - `max-compression` → prefer `planar3/planar3` (or `iso3/iso3`), otherwise use a supported quantized fallback
+   - `memory-saver` → prefer `turbo3/f16` (or `planar3/f16` / `iso3/f16` when `LLMSTICK_KV_ROTATION` is overridden), otherwise use a supported quantized fallback
+   - `max-compression` → prefer `turbo3/turbo3` (or `planar3/planar3` / `iso3/iso3` when `LLMSTICK_KV_ROTATION` is overridden), otherwise use a supported quantized fallback
 8. If the runtime still rejects the requested cache profile, the launcher retries with `f16/f16`
 9. Model loads into memory (10-60 seconds)
 10. `>` prompt appears — start asking questions
@@ -126,7 +126,7 @@ LLM Stick/
 |-----------|-----------|---------|
 | AI Engine (Linux) | `llama.cpp` rotorquant runtime package | MIT |
 | Model | [Qwen3-4B-Instruct abliterated](https://huggingface.co/prithivMLmods/Qwen3-4B-Instruct-2507-abliterated-GGUF) | Apache 2.0 |
-| KV Profiles | `f16`, `planar3`, `iso3` (runtime-dependent) | — |
+| KV Profiles | `f16`, `turbo3`, `planar3`, `iso3` (runtime-dependent) | — |
 | Context Window | 8192 tokens (default) | — |
 
 ## Support

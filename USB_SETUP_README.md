@@ -141,7 +141,7 @@ The Linux launcher accepts optional overrides:
 
 ```bash
 LLMSTICK_KV_PROFILE=compatibility|memory-saver|max-compression|auto
-LLMSTICK_KV_ROTATION=planar3|iso3
+LLMSTICK_KV_ROTATION=turbo3|planar3|iso3
 LLMSTICK_CTX_SIZE=8192
 LLMSTICK_MODEL_PROFILE=auto|thinking|coder
 ./LinuxLaunch.sh [--thinking] [--coder]
