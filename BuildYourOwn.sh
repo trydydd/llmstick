@@ -267,6 +267,7 @@ extract_tarball() {
   local archive="$1"
   local destination="$2"
   local staging_dir=""
+  local temp_root=""
   local tar_entry=""
   local tar_part=""
   local tar_listing=""
@@ -325,7 +326,8 @@ extract_tarball() {
     validate_archive_path "$tar_entry"
   done < <(tar -tzf "$archive")
 
-  staging_dir="$(mktemp -d "$TMPDIR/extract.XXXXXX")"
+  temp_root="${TMPDIR:-/tmp}"
+  staging_dir="$(mktemp -d "$temp_root/extract.XXXXXX")"
   tar -xzf "$archive" -C "$staging_dir"
 
   while IFS= read -r extracted_path; do
@@ -345,7 +347,7 @@ extract_tarball() {
     [[ "$canonical_extracted_path" == "$canonical_destination" || "$canonical_extracted_path" == "$canonical_destination/"* ]] || fail "Unsafe extracted path from $(basename -- "$archive"): $extracted_path"
   done < <(find "$destination" -mindepth 1 -print)
 
-  if find "$destination" -type l -print -quit | grep -q .; then
+  if [[ -n "$(find "$destination" -type l -print -quit)" ]]; then
     rm -rf "$staging_dir"
     fail "Failed to dereference all symbolic links during installation: $destination"
   fi
