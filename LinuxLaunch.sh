@@ -380,6 +380,11 @@ is_kv_profile_error() {
     grep -Eiq "$kv_error_pattern" "$log_file"
 }
 
+is_signal_exit() {
+    local exit_code="$1"
+    [ "${exit_code:-0}" -ge 128 ] && [ "${exit_code:-0}" -le 255 ]
+}
+
 # Clear Screen & Set Title
 parse_args "$@"
 printf "\033]0;Qwen AI - Linux Launcher\007"
@@ -589,9 +594,13 @@ if [ "$LAUNCH_EXIT" -ne 0 ]; then
     run_runtime_command "${PROBE_CMD[@]}" >"$PROBE_LOG" 2>&1 || true
 
     if [ "$CACHE_TYPE_K" != "f16" ] || [ "$CACHE_TYPE_V" != "f16" ]; then
-        if is_kv_profile_error "$PROBE_LOG" || is_kv_profile_error "$LAUNCH_LOG"; then
+        if is_kv_profile_error "$PROBE_LOG" || is_kv_profile_error "$LAUNCH_LOG" || is_signal_exit "$LAUNCH_EXIT"; then
             echo ""
-            echo "  [DIAGNOSTIC] Requested KV cache profile is not supported by this runtime."
+            if is_signal_exit "$LAUNCH_EXIT"; then
+                echo "  [DIAGNOSTIC] The runtime crashed while loading the requested KV cache profile."
+            else
+                echo "  [DIAGNOSTIC] Requested KV cache profile is not supported by this runtime."
+            fi
             echo "  Falling back to Compatibility [f16/f16] and retrying once."
             echo ""
 
