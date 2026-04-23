@@ -125,10 +125,7 @@ is_kv_profile_error() {
     local kv_error_pattern=""
 
     # Match the common ways llama.cpp-style runtimes report unsupported KV cache flags.
-    kv_error_pattern='unsupported cache type|cache type .*not supported'
-    kv_error_pattern+='|unknown (argument|option).*(cache-type|ctk|ctv)'
-    kv_error_pattern+='|invalid (argument|value).*(cache-type|ctk|ctv)'
-    kv_error_pattern+='|unrecognized option.*(cache-type|ctk|ctv)'
+    kv_error_pattern='unsupported cache type|cache type .*not supported|unknown (argument|option).*(cache-type|ctk|ctv)|invalid (argument|value).*(cache-type|ctk|ctv)|unrecognized option.*(cache-type|ctk|ctv)'
 
     grep -Eiq "$kv_error_pattern" "$log_file"
 }

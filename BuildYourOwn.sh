@@ -243,12 +243,19 @@ extract_tarball() {
   local tar_part=""
   local tar_listing=""
   local tar_type=""
+  local canonical_root=""
+  local canonical_destination=""
+  local extracted_path=""
+  local canonical_extracted_path=""
   local -a tar_parts=()
 
   require_cmd tar
+  require_cmd realpath
   [[ -n "$destination" ]] || fail "Refusing to extract archive to an empty destination"
   [[ "$destination" != "/" ]] || fail "Refusing to extract archive to /"
-  [[ "$destination" == "$TARGET_DIR/.system/"* ]] || fail "Refusing to extract archive outside $TARGET_DIR/.system: $destination"
+  canonical_root="$(realpath -m "$TARGET_DIR/.system")"
+  canonical_destination="$(realpath -m "$destination")"
+  [[ "$canonical_destination" == "$canonical_root/"* ]] || fail "Refusing to extract archive outside $canonical_root: $destination"
 
   while IFS= read -r tar_listing; do
     tar_type="${tar_listing%% *}"
@@ -267,6 +274,11 @@ extract_tarball() {
   rm -rf "$destination"
   mkdir -p "$destination"
   tar -xzf "$archive" -C "$destination"
+
+  while IFS= read -r extracted_path; do
+    canonical_extracted_path="$(realpath -m "$extracted_path")"
+    [[ "$canonical_extracted_path" == "$canonical_destination" || "$canonical_extracted_path" == "$canonical_destination/"* ]] || fail "Unsafe extracted path from $(basename -- "$archive"): $extracted_path"
+  done < <(find "$destination" -mindepth 1 -print)
 }
 
 install_runtime_package() {
