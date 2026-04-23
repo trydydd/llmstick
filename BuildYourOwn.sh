@@ -240,14 +240,16 @@ extract_tarball() {
   local archive="$1"
   local destination="$2"
   local tar_entry=""
+  local tar_part=""
+  local -a tar_parts=()
 
   require_cmd tar
   while IFS= read -r tar_entry; do
     [[ "$tar_entry" == /* ]] && fail "Unsafe archive path in $(basename -- "$archive"): $tar_entry"
-    [[ "$tar_entry" == *"../"* ]] && fail "Unsafe archive path in $(basename -- "$archive"): $tar_entry"
-    [[ "$tar_entry" == ../* ]] && fail "Unsafe archive path in $(basename -- "$archive"): $tar_entry"
-    [[ "$tar_entry" == *"/.." ]] && fail "Unsafe archive path in $(basename -- "$archive"): $tar_entry"
-    [[ "$tar_entry" == ".." ]] && fail "Unsafe archive path in $(basename -- "$archive"): $tar_entry"
+    IFS='/' read -r -a tar_parts <<< "$tar_entry"
+    for tar_part in "${tar_parts[@]}"; do
+      [[ "$tar_part" == ".." ]] && fail "Unsafe archive path in $(basename -- "$archive"): $tar_entry"
+    done
   done < <(tar -tzf "$archive")
 
   rm -rf "$destination"

@@ -122,7 +122,13 @@ set_kv_profile() {
 
 is_kv_profile_error() {
     local log_file="$1"
-    grep -Eiq 'unsupported cache type|cache type .*not supported|unknown (argument|option).*(cache-type|ctk|ctv)|invalid (argument|value).*(cache-type|ctk|ctv)|unrecognized option.*(cache-type|ctk|ctv)' "$log_file"
+
+    grep -Eiq 'unsupported cache type|cache type .*not supported' "$log_file" && return 0
+    grep -Eiq 'unknown (argument|option).*(cache-type|ctk|ctv)' "$log_file" && return 0
+    grep -Eiq 'invalid (argument|value).*(cache-type|ctk|ctv)' "$log_file" && return 0
+    grep -Eiq 'unrecognized option.*(cache-type|ctk|ctv)' "$log_file" && return 0
+
+    return 1
 }
 
 # Clear Screen & Set Title
