@@ -99,7 +99,7 @@ runtime_library_path_for_binary() {
 
     for path_candidate in "$runtime_root/lib" "$runtime_root/lib64" "$runtime_root"; do
         if [ -d "$path_candidate" ] && {
-            [ "$path_candidate" != "$runtime_root" ] || find "$path_candidate" -maxdepth 1 -type f \( -name '*.so' -o -name '*.so.*' \) -print -quit | grep -q .
+            [ "$path_candidate" != "$runtime_root" ] || [ -n "$(find "$path_candidate" -maxdepth 1 -type f \( -name '*.so' -o -name '*.so.*' \) -print -quit)" ]
         }; then
             if [ -n "$library_path" ]; then
                 library_path="${library_path}:$path_candidate"
@@ -112,6 +112,16 @@ runtime_library_path_for_binary() {
     printf '%s\n' "$library_path"
 }
 
+prepend_runtime_library_path() {
+    local runtime_library_path="$1"
+
+    if [ -n "$runtime_library_path" ]; then
+        printf '%s\n' "${runtime_library_path}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    else
+        printf '%s\n' "${LD_LIBRARY_PATH:-}"
+    fi
+}
+
 run_command_with_binary_libs() {
     local candidate="$1"
     shift
@@ -119,7 +129,7 @@ run_command_with_binary_libs() {
 
     runtime_library_path="$(runtime_library_path_for_binary "$candidate")"
     if [ -n "$runtime_library_path" ]; then
-        LD_LIBRARY_PATH="${runtime_library_path}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" "$candidate" "$@"
+        LD_LIBRARY_PATH="$(prepend_runtime_library_path "$runtime_library_path")" "$candidate" "$@"
     else
         "$candidate" "$@"
     fi
@@ -127,7 +137,7 @@ run_command_with_binary_libs() {
 
 run_runtime_command() {
     if [ -n "$RUNTIME_LD_LIBRARY_PATH" ]; then
-        LD_LIBRARY_PATH="${RUNTIME_LD_LIBRARY_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" "$@"
+        LD_LIBRARY_PATH="$(prepend_runtime_library_path "$RUNTIME_LD_LIBRARY_PATH")" "$@"
     else
         "$@"
     fi

@@ -160,6 +160,7 @@ build_rotorquant_runtime() {
 
   # Install to a host-side staging directory so cmake does not try to create
   # symlinks directly on the USB target filesystem (exFAT etc. forbid symlinks).
+  # Keep install RPATH aligned with LinuxLaunch.sh runtime_library_path_for_binary().
   log "Configuring rotorquant llama.cpp build..."
   cmake \
     -B "$build_dir" \
