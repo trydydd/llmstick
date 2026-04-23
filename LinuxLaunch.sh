@@ -289,7 +289,7 @@ if [ "$MODEL_PROFILE_REQUEST" = "thinking" ]; then
         MODE_NAME="Fallback from Thinking [Q4]"
     else
         SELECTED_MODEL=""
-        MODE_NAME="Thinking Mode [Q8]"
+        MODE_NAME="No Model Available"
     fi
 fi
 

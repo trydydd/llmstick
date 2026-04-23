@@ -274,15 +274,15 @@ download_or_copy_local_asset() {
   local output="$2"
   local size_hint="$3"
   local filename
-  local url_path_filename
+  local url_basename
 
   filename="$(basename -- "$output")"
-  url_path_filename="$(basename -- "${url%%\?*}")"
+  url_basename="$(basename -- "${url%%\?*}")"
 
   if ! copy_from_local_downloads_if_present "$filename" "$output"; then
     # Some asset URLs add query strings (for example Hugging Face ?download=true),
     # but local caches still use the pinned on-disk filename.
-    if [[ "$url_path_filename" != "$filename" ]] && copy_from_local_downloads_if_present "$url_path_filename" "$output"; then
+    if [[ "$url_basename" != "$filename" ]] && copy_from_local_downloads_if_present "$url_basename" "$output"; then
       return 0
     fi
     download_file "$url" "$output" "$size_hint"
