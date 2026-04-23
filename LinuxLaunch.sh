@@ -278,16 +278,24 @@ else
 fi
 
 if [ "$MODEL_PROFILE_REQUEST" = "thinking" ]; then
-    SELECTED_MODEL="$MODEL_THINKING"
-    MODE_NAME="Thinking Mode [Q8]"
+    if [ -f "$MODEL_THINKING" ]; then
+        SELECTED_MODEL="$MODEL_THINKING"
+        MODE_NAME="Thinking Mode [Q8]"
+    elif [ -f "$MODEL_HIGH" ]; then
+        SELECTED_MODEL="$MODEL_HIGH"
+        MODE_NAME="Fallback from Thinking [Q8]"
+    elif [ -f "$MODEL_LOW" ]; then
+        SELECTED_MODEL="$MODEL_LOW"
+        MODE_NAME="Fallback from Thinking [Q4]"
+    else
+        SELECTED_MODEL=""
+        MODE_NAME="Thinking Mode [Q8]"
+    fi
 fi
 
 # 9. FALLBACK CHECK
 if [ ! -f "$SELECTED_MODEL" ]; then
-    if [ "$MODEL_PROFILE_REQUEST" = "thinking" ] && [ -f "$MODEL_HIGH" ]; then
-        SELECTED_MODEL="$MODEL_HIGH"
-        MODE_NAME="Fallback from Thinking [Q8]"
-    elif [ -f "$MODEL_HIGH" ]; then SELECTED_MODEL="$MODEL_HIGH"; MODE_NAME="Backup [Q8]";
+    if [ -f "$MODEL_HIGH" ]; then SELECTED_MODEL="$MODEL_HIGH"; MODE_NAME="Backup [Q8]";
     elif [ -f "$MODEL_LOW" ]; then SELECTED_MODEL="$MODEL_LOW"; MODE_NAME="Backup [Q4]";
     else
         echo ""
