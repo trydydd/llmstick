@@ -211,7 +211,7 @@ download_file() {
   local size_hint="$3"
   local attempts=5
   local attempt=1
-  local retry_delay=0
+  local retry_delay
 
   require_cmd curl
   mkdir -p "$(dirname -- "$output")"
@@ -235,6 +235,7 @@ download_file() {
 
     log "Retrying download ($(basename -- "$output"), attempt $((attempt + 1))/$attempts)"
     retry_delay=$((2 ** attempt))
+    (( retry_delay > 16 )) && retry_delay=16
     sleep "$retry_delay"
     ((attempt++))
   done
