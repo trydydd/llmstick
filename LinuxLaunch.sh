@@ -134,11 +134,7 @@ set_kv_profile() {
 
     case "$requested" in
         auto)
-            if [ "$ENGINE_VARIANT" = "CUDA" ]; then
-                set_kv_profile "memory-saver"
-            else
-                set_kv_profile "compatibility"
-            fi
+            set_kv_profile "memory-saver"
             ;;
         compatibility)
             CACHE_TYPE_K="f16"

@@ -72,7 +72,7 @@ That makes it easy to reuse existing llama.cpp forks or build repos that already
    - `runtime-cuda/` when a CUDA-capable NVIDIA stack is available
    - `runtime-cpu/` otherwise
 7. A KV-cache profile is selected:
-   - `auto` → `planar3/f16` on CUDA, `f16/f16` on CPU
+   - `auto` → `planar3/f16` on both CUDA and CPU
    - `compatibility` → `f16/f16`
    - `memory-saver` → `planar3/f16` (or `iso3/f16` if `LLMSTICK_KV_ROTATION=iso3`)
    - `max-compression` → `planar3/planar3` (or `iso3/iso3`)
