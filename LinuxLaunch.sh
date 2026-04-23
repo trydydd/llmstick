@@ -25,6 +25,8 @@ MODEL_PROFILE_REQUEST="${LLMSTICK_MODEL_PROFILE:-auto}"
 ENGINE_FALLBACK_MODE="false"
 ENGINE_VARIANT=""
 ENGINE_SERVER=""
+RUNTIME_HELP_OUTPUT=""
+SUPPORTED_CACHE_TYPES=""
 
 parse_args() {
     while [ $# -gt 0 ]; do
@@ -87,6 +89,84 @@ probe_binary() {
     local candidate="$1"
     [ -n "$candidate" ] || return 1
     "$candidate" --help >/dev/null 2>&1
+}
+
+detect_supported_cache_types() {
+    local candidate="$1"
+    local allowed_line=""
+
+    RUNTIME_HELP_OUTPUT="$("$candidate" --help 2>&1 || true)"
+    allowed_line="$(printf '%s\n' "$RUNTIME_HELP_OUTPUT" | grep -Eim1 'allowed values: .*f16')"
+    if [ -n "$allowed_line" ]; then
+        SUPPORTED_CACHE_TYPES="$(printf '%s\n' "$allowed_line" | sed -E 's/.*allowed values:[[:space:]]*//; s/,/ /g' | tr -s '[:space:]' ' ' | sed -E 's/^ //; s/ $//')"
+    else
+        SUPPORTED_CACHE_TYPES=""
+    fi
+}
+
+cache_type_supported() {
+    local candidate="$1"
+    case " $SUPPORTED_CACHE_TYPES " in
+        *" $candidate "*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+best_quantized_cache_type() {
+    local candidate=""
+    for candidate in q8_0 q5_1 q5_0 iq4_nl q4_1 q4_0; do
+        if cache_type_supported "$candidate"; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+adapt_kv_profile_for_runtime() {
+    local requested="$1"
+    local quantized_cache_type=""
+
+    if [ -z "$SUPPORTED_CACHE_TYPES" ]; then
+        return 0
+    fi
+
+    if cache_type_supported "$CACHE_TYPE_K" && cache_type_supported "$CACHE_TYPE_V"; then
+        return 0
+    fi
+
+    quantized_cache_type="$(best_quantized_cache_type 2>/dev/null || true)"
+
+    case "$requested" in
+        auto|memory-saver)
+            if [ -n "$quantized_cache_type" ] && cache_type_supported "f16"; then
+                CACHE_TYPE_K="$quantized_cache_type"
+                CACHE_TYPE_V="f16"
+                CACHE_PROFILE_NAME="Quantized Memory Saver [$CACHE_TYPE_K/$CACHE_TYPE_V] [runtime fallback]"
+            else
+                CACHE_TYPE_K="f16"
+                CACHE_TYPE_V="f16"
+                CACHE_PROFILE_NAME="Compatibility [f16/f16] [runtime fallback]"
+            fi
+            ;;
+        max-compression)
+            if [ -n "$quantized_cache_type" ]; then
+                CACHE_TYPE_K="$quantized_cache_type"
+                CACHE_TYPE_V="$quantized_cache_type"
+                CACHE_PROFILE_NAME="Quantized Max Compression [$CACHE_TYPE_K/$CACHE_TYPE_V] [runtime fallback]"
+            else
+                CACHE_TYPE_K="f16"
+                CACHE_TYPE_V="f16"
+                CACHE_PROFILE_NAME="Compatibility [f16/f16] [runtime fallback]"
+            fi
+            ;;
+        *)
+            CACHE_TYPE_K="f16"
+            CACHE_TYPE_V="f16"
+            CACHE_PROFILE_NAME="Compatibility [f16/f16]"
+            ;;
+    esac
 }
 
 choose_runtime_binary() {
@@ -256,6 +336,7 @@ fi
 
 chmod +x "$BINARY" 2>/dev/null
 [ -n "$ENGINE_SERVER" ] && chmod +x "$ENGINE_SERVER" 2>/dev/null || true
+detect_supported_cache_types "$BINARY"
 
 if [ "$ENGINE_FALLBACK_MODE" = "true" ]; then
     echo "  Runtime: CPU fallback [CUDA package unavailable or unusable]"
@@ -326,6 +407,7 @@ fi
 
 echo "  Loading: $MODE_NAME"
 set_kv_profile "$KV_PROFILE_REQUEST"
+adapt_kv_profile_for_runtime "$KV_PROFILE_REQUEST"
 echo "  KV Cache: $CACHE_PROFILE_NAME"
 echo "  Context: ${CTX_SIZE} tokens"
 echo "----------------------------------------------------------------"

@@ -72,11 +72,11 @@ That makes it easy to reuse existing llama.cpp forks or build repos that already
    - `runtime-cuda/` when a CUDA-capable NVIDIA stack is available
    - `runtime-cpu/` otherwise
 7. A KV-cache profile is selected:
-   - `auto` → `planar3/f16` on both CUDA and CPU
+   - `auto` → prefer rotorquant `planar3/f16`; if the selected runtime does not advertise rotorquant cache types, use a supported quantized fallback instead
    - `compatibility` → `f16/f16`
-   - `memory-saver` → `planar3/f16` (or `iso3/f16` if `LLMSTICK_KV_ROTATION=iso3`)
-   - `max-compression` → `planar3/planar3` (or `iso3/iso3`)
-8. If the runtime rejects the requested cache profile, the launcher retries with `f16/f16`
+   - `memory-saver` → prefer `planar3/f16` (or `iso3/f16` if `LLMSTICK_KV_ROTATION=iso3`), otherwise use a supported quantized fallback
+   - `max-compression` → prefer `planar3/planar3` (or `iso3/iso3`), otherwise use a supported quantized fallback
+8. If the runtime still rejects the requested cache profile, the launcher retries with `f16/f16`
 9. Model loads into memory (10-60 seconds)
 10. `>` prompt appears — start asking questions
 
@@ -118,6 +118,7 @@ LLM Stick/
 - `LinuxLaunch.sh` currently uses `llama-cli` for terminal chat and detects `llama-server` so the later orchestrator can reuse the same packaged runtime.
 - `LinuxLaunch.sh --thinking` prefers `Qwen3-4B-Thinking-2507-abliterated.Q8_0.gguf` and falls back to the standard models if it is missing.
 - Existing rotorquant-capable forks can be reused immediately by overriding the package URLs in `BuildYourOwn.sh`.
+- When the packaged runtime only supports standard llama.cpp cache types (for example `q8_0`), `LinuxLaunch.sh` now downgrades the requested rotorquant cache profile to a supported quantized cache mode before launch.
 
 ## Tech Stack
 
