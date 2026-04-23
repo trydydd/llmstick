@@ -380,9 +380,12 @@ is_kv_profile_error() {
     grep -Eiq "$kv_error_pattern" "$log_file"
 }
 
-is_signal_exit() {
+is_crash_signal_exit() {
     local exit_code="$1"
-    [ "${exit_code:-0}" -ge 129 ] && [ "${exit_code:-0}" -le 192 ]
+    case "${exit_code:-0}" in
+        131|132|134|135|136|137|139) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 # Clear Screen & Set Title
@@ -594,9 +597,9 @@ if [ "$LAUNCH_EXIT" -ne 0 ]; then
     run_runtime_command "${PROBE_CMD[@]}" >"$PROBE_LOG" 2>&1 || true
 
     if [ "$CACHE_TYPE_K" != "f16" ] || [ "$CACHE_TYPE_V" != "f16" ]; then
-        if is_kv_profile_error "$PROBE_LOG" || is_kv_profile_error "$LAUNCH_LOG" || is_signal_exit "$LAUNCH_EXIT"; then
+        if is_crash_signal_exit "$LAUNCH_EXIT" || is_kv_profile_error "$PROBE_LOG" || is_kv_profile_error "$LAUNCH_LOG"; then
             echo ""
-            if is_signal_exit "$LAUNCH_EXIT"; then
+            if is_crash_signal_exit "$LAUNCH_EXIT"; then
                 echo "  [DIAGNOSTIC] The runtime crashed while loading the requested KV cache profile."
             else
                 echo "  [DIAGNOSTIC] Requested KV cache profile is not supported by this runtime."
