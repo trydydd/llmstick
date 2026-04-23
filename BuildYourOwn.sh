@@ -4,7 +4,7 @@ set -euo pipefail
 # Build a bootstrapped facts USB drive from this repository.
 # - Copies repo files to target USB path
 # - Creates .system/
-# - Downloads required binaries/models
+# - Downloads required runtime packages/models
 # - Optionally formats the device as exFAT (destructive)
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,7 +17,11 @@ SKIP_DOWNLOADS="false"
 FORCE="false"
 AUTO_FORMAT="false"
 
-LLAMAFILE_LINUX_URL="${LLAMAFILE_LINUX_URL:-https://github.com/Mozilla-Ocho/llamafile/releases/download/0.9.3/llamafile-0.9.3}"
+LLAMA_CPP_RUNTIME_VERSION="${LLAMA_CPP_RUNTIME_VERSION:-v0.1.0-rotorquant}"
+ROTORQUANT_LLAMA_CPP_BRANCH="${ROTORQUANT_LLAMA_CPP_BRANCH:-feature/planarquant-kv-cache}"
+ROTORQUANT_LLAMA_CPP_COMMIT="${ROTORQUANT_LLAMA_CPP_COMMIT:-20efe75}"
+LLAMA_CPP_CPU_PACKAGE_URL="${LLAMA_CPP_CPU_PACKAGE_URL:-https://github.com/trydydd/llmstick/releases/download/${LLAMA_CPP_RUNTIME_VERSION}/llama.cpp-${ROTORQUANT_LLAMA_CPP_COMMIT}-linux-x86_64-cpu.tar.gz}"
+LLAMA_CPP_CUDA_PACKAGE_URL="${LLAMA_CPP_CUDA_PACKAGE_URL:-https://github.com/trydydd/llmstick/releases/download/${LLAMA_CPP_RUNTIME_VERSION}/llama.cpp-${ROTORQUANT_LLAMA_CPP_COMMIT}-linux-x86_64-cuda.tar.gz}"
 Q8_URL="${Q8_URL:-https://huggingface.co/prithivMLmods/Qwen3-4B-2507-abliterated-GGUF/resolve/main/Qwen3-4B-Instruct-2507-abliterated-GGUF/Qwen3-4B-Instruct-2507-abliterated.Q8_0.gguf}"
 Q4_URL="${Q4_URL:-https://huggingface.co/prithivMLmods/Qwen3-4B-2507-abliterated-GGUF/resolve/main/Qwen3-4B-Instruct-2507-abliterated-GGUF/Qwen3-4B-Instruct-2507-abliterated.Q4_K_M.gguf}"
 
@@ -40,7 +44,11 @@ Options:
   -h, --help                 Show this help
 
 Environment overrides:
-  LLAMAFILE_LINUX_URL
+  LLAMA_CPP_RUNTIME_VERSION
+  LLAMA_CPP_CPU_PACKAGE_URL
+  LLAMA_CPP_CUDA_PACKAGE_URL
+  ROTORQUANT_LLAMA_CPP_BRANCH
+  ROTORQUANT_LLAMA_CPP_COMMIT
   Q8_URL
   Q4_URL
 
@@ -215,6 +223,44 @@ copy_from_local_downloads_if_present() {
   return 0
 }
 
+download_or_copy_local_asset() {
+  local url="$1"
+  local output="$2"
+  local size_hint="$3"
+  local filename
+
+  filename="$(basename -- "$url")"
+
+  if ! copy_from_local_downloads_if_present "$filename" "$output"; then
+    download_file "$url" "$output" "$size_hint"
+  fi
+}
+
+extract_tarball() {
+  local archive="$1"
+  local destination="$2"
+
+  require_cmd tar
+  rm -rf "$destination"
+  mkdir -p "$destination"
+  tar -xzf "$archive" -C "$destination"
+}
+
+install_runtime_package() {
+  local label="$1"
+  local url="$2"
+  local destination="$3"
+  local archive
+  local archive_name
+
+  archive_name="$(basename -- "$url")"
+  archive="$TMPDIR/$archive_name"
+
+  log "Preparing runtime package: $label"
+  download_or_copy_local_asset "$url" "$archive" "(runtime package)"
+  extract_tarball "$archive" "$destination"
+}
+
 download_required_assets() {
   [[ "$SKIP_DOWNLOADS" == "false" ]] || {
     log "Skipping downloads (--skip-downloads)"
@@ -223,22 +269,21 @@ download_required_assets() {
 
   local system_dir="$TARGET_DIR/.system"
   mkdir -p "$system_dir"
-  log "Checking local model files in $HOME/Download (preferred), then $HOME/Downloads"
+  log "Checking local assets in $HOME/Download (preferred), then $HOME/Downloads"
 
-  download_file "$LLAMAFILE_LINUX_URL" "$system_dir/llamafile" "(Linux engine)"
-  chmod +x "$system_dir/llamafile" || true
+  install_runtime_package "CPU runtime" "$LLAMA_CPP_CPU_PACKAGE_URL" "$system_dir/runtime-cpu"
+  install_runtime_package "CUDA runtime" "$LLAMA_CPP_CUDA_PACKAGE_URL" "$system_dir/runtime-cuda"
+  find "$system_dir/runtime-cpu" "$system_dir/runtime-cuda" -type f \( -name 'llama-cli' -o -name 'llama-server' \) -exec chmod +x {} + 2>/dev/null || true
 
-  if ! copy_from_local_downloads_if_present \
-    "Qwen3-4B-Instruct-2507-abliterated.Q8_0.gguf" \
-    "$system_dir/Qwen3-4B-Instruct-2507-abliterated.Q8_0.gguf"; then
-    download_file "$Q8_URL" "$system_dir/Qwen3-4B-Instruct-2507-abliterated.Q8_0.gguf" "(~4.0GB)"
-  fi
+  download_or_copy_local_asset \
+    "$Q8_URL" \
+    "$system_dir/Qwen3-4B-Instruct-2507-abliterated.Q8_0.gguf" \
+    "(~4.0GB)"
 
-  if ! copy_from_local_downloads_if_present \
-    "Qwen3-4B-Instruct-2507-abliterated.Q4_K_M.gguf" \
-    "$system_dir/Qwen3-4B-Instruct-2507-abliterated.Q4_K_M.gguf"; then
-    download_file "$Q4_URL" "$system_dir/Qwen3-4B-Instruct-2507-abliterated.Q4_K_M.gguf" "(~2.3GB)"
-  fi
+  download_or_copy_local_asset \
+    "$Q4_URL" \
+    "$system_dir/Qwen3-4B-Instruct-2507-abliterated.Q4_K_M.gguf" \
+    "(~2.3GB)"
 
 }
 
@@ -251,9 +296,15 @@ Target: $TARGET_DIR
 Created/updated: $TARGET_DIR/.system/
 
 Installed files:
-- llamafile (Linux engine)
+- runtime-cpu/ (llama.cpp CLI + server package)
+- runtime-cuda/ (llama.cpp CLI + server package)
 - Qwen3-4B-Instruct-2507-abliterated.Q8_0.gguf
 - Qwen3-4B-Instruct-2507-abliterated.Q4_K_M.gguf
+
+Pinned rotorquant source:
+- repo: johndpope/llama-cpp-turboquant
+- branch: $ROTORQUANT_LLAMA_CPP_BRANCH
+- commit: $ROTORQUANT_LLAMA_CPP_COMMIT
 
 Next step:
 - Eject the USB drive safely, plug into target Linux machine, run LinuxLaunch.sh.
@@ -261,6 +312,9 @@ EOF
 }
 
 main() {
+  TMPDIR="$(mktemp -d -t llmstick-build.XXXXXX)"
+  trap 'rm -rf "$TMPDIR"' EXIT
+
   parse_args "$@"
 
   require_cmd uname
