@@ -159,25 +159,42 @@ probe_binary() {
 
 detect_supported_cache_types() {
     local candidate="$1"
-    local allowed_line=""
 
     RUNTIME_HELP_OUTPUT="$(run_command_with_binary_libs "$candidate" --help 2>&1 || true)"
-    allowed_line="$(
+    SUPPORTED_CACHE_TYPES="$(
         printf '%s\n' "$RUNTIME_HELP_OUTPUT" | awk '
-            /--cache-type-k/ { in_block=1; next }
-            in_block && /allowed values:/ {
-                sub(/^.*allowed values:[[:space:]]*/, "")
-                print
-                exit
+            function emit_tokens(line, normalized, count, i, token) {
+                normalized = line
+                gsub(/[][()]/, " ", normalized)
+                gsub(/,/, " ", normalized)
+                gsub(/[[:space:]]+/, " ", normalized)
+                count = split(normalized, parts, " ")
+                for (i = 1; i <= count; i++) {
+                    token = parts[i]
+                    if (token ~ /^(f16|f32|bf16|q[0-9]+(_[a-z0-9]+)*|iq[0-9]+(_[a-z0-9]+)*|(planar|turbo|iso)[0-9]+)$/ && !seen[token]++) {
+                        ordered = ordered (ordered ? " " : "") token
+                    }
+                }
             }
-            in_block && /^[^[:space:]]/ { exit }
+
+            /^[[:space:]]*--cache-type-(k|v)([[:space:]]|$)/ { in_block=1; collecting=0; next }
+            in_block && /^[[:space:]]*--/ { in_block=0; collecting=0; next }
+            in_block && /allowed values:/ {
+                collecting=1
+                line=$0
+                sub(/^.*allowed values:[[:space:]]*/, "", line)
+                emit_tokens(line)
+                next
+            }
+            in_block && collecting {
+                emit_tokens($0)
+            }
+
+            END {
+                print ordered
+            }
         '
     )"
-    if [ -n "$allowed_line" ]; then
-        SUPPORTED_CACHE_TYPES="$(printf '%s\n' "$allowed_line" | tr ',' ' ' | tr -s '[:space:]' ' ' | sed -E 's/^ //; s/ $//')"
-    else
-        SUPPORTED_CACHE_TYPES=""
-    fi
 }
 
 cache_type_supported() {
