@@ -362,7 +362,11 @@ extract_tarball() {
   copy_source="$staging_dir"
   while IFS= read -r extracted_path; do
     entry_count=$((entry_count + 1))
-    wrapper_dir="$extracted_path"
+    if (( entry_count == 1 )); then
+      wrapper_dir="$extracted_path"
+    else
+      wrapper_dir=""
+    fi
   done < <(find "$staging_dir" -mindepth 1 -maxdepth 1 -print)
 
   if (( entry_count == 1 )) && [[ -d "$wrapper_dir" ]]; then
