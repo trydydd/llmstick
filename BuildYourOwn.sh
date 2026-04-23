@@ -333,6 +333,7 @@ extract_tarball() {
   tar -xzf "$archive" -C "$staging_dir"
 
   while IFS= read -r extracted_path; do
+    [[ -L "$extracted_path" && ! -e "$extracted_path" ]] && fail "Unsafe archive entry in $(basename -- "$archive"): broken symbolic link: ${extracted_path#"$staging_dir"/}"
     canonical_extracted_path="$(realpath -m "$extracted_path")"
     [[ "$canonical_extracted_path" == "$staging_dir" || "$canonical_extracted_path" == "$staging_dir/"* ]] || fail "Unsafe extracted path from $(basename -- "$archive"): $extracted_path"
   done < <(find "$staging_dir" -mindepth 1 -print)
@@ -341,7 +342,7 @@ extract_tarball() {
   mkdir -p "$destination"
   rsync_error_log="$(mktemp "$temp_root/rsync.XXXXXX")"
   if ! rsync -aL "$staging_dir"/ "$destination"/ 2>"$rsync_error_log"; then
-    rsync_error_message="$(tr '\n' ' ' < "$rsync_error_log" | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')"
+    rsync_error_message="$(head -n 1 "$rsync_error_log" | tr '\r\n' ' ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')"
     rm -f "$rsync_error_log"
     rm -rf "$staging_dir"
     fail "Failed to copy runtime from staging directory to $destination${rsync_error_message:+: $rsync_error_message}"
@@ -355,7 +356,7 @@ extract_tarball() {
 
   if [[ -n "$(find "$destination" -type l -print -quit)" ]]; then
     rm -rf "$staging_dir"
-    fail "Failed to dereference all symbolic links during installation: $destination"
+    fail "Unexpected symbolic links found after copy operation: $destination"
   fi
 
   rm -rf "$staging_dir"
