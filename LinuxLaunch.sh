@@ -27,30 +27,23 @@ resolve_binary() {
     local root="$1"
     local name="$2"
     local candidate
+    local search_root
     local -a search_roots=()
 
-    if [ -x "$root/bin/$name" ]; then
-        printf '%s\n' "$root/bin/$name"
-        return 0
-    fi
-
-    if [ -x "$root/$name" ]; then
-        printf '%s\n' "$root/$name"
-        return 0
-    fi
-
     shopt -s nullglob
-    search_roots=("$root" "$root"/* "$root"/*/*)
+    search_roots=("$root"/ "$root"/*/ "$root"/*/*/)
     shopt -u nullglob
 
-    for candidate in "${search_roots[@]}"; do
-        if [ -x "$candidate/bin/$name" ]; then
-            printf '%s\n' "$candidate/bin/$name"
+    for search_root in "${search_roots[@]}"; do
+        candidate="${search_root%/}/bin/$name"
+        if [ -x "$candidate" ]; then
+            printf '%s\n' "$candidate"
             return 0
         fi
 
-        if [ -x "$candidate/$name" ]; then
-            printf '%s\n' "$candidate/$name"
+        candidate="${search_root%/}/$name"
+        if [ -x "$candidate" ]; then
+            printf '%s\n' "$candidate"
             return 0
         fi
     done
