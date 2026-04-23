@@ -56,7 +56,7 @@ choose_runtime_binary() {
         if [ -n "$candidate" ] && probe_binary "$candidate"; then
             ENGINE_VARIANT="CUDA"
             ENGINE_SERVER="$(resolve_binary "$SYSTEM_DIR/runtime-cuda" "llama-server" 2>/dev/null || true)"
-            printf '%s\n' "$candidate"
+            BINARY="$candidate"
             return 0
         fi
     fi
@@ -68,7 +68,7 @@ choose_runtime_binary() {
         if [ "$preferred_variant" = "cuda" ]; then
             ENGINE_FALLBACK_MODE="true"
         fi
-        printf '%s\n' "$candidate"
+        BINARY="$candidate"
         return 0
     fi
 
@@ -79,7 +79,7 @@ choose_runtime_binary() {
         if [ "$preferred_variant" = "cuda" ]; then
             ENGINE_FALLBACK_MODE="true"
         fi
-        printf '%s\n' "$direct_candidate"
+        BINARY="$direct_candidate"
         return 0
     fi
 
@@ -122,7 +122,7 @@ set_kv_profile() {
 
 is_kv_profile_error() {
     local log_file="$1"
-    grep -Eiq 'cache-type|cache type|unknown argument|invalid argument|invalid value|unsupported.*cache|unrecognized option' "$log_file"
+    grep -Eiq 'unsupported cache type|cache type .*not supported|unknown (argument|option).*(cache-type|ctk|ctv)|invalid (argument|value).*(cache-type|ctk|ctv)|unrecognized option.*(cache-type|ctk|ctv)' "$log_file"
 }
 
 # Clear Screen & Set Title
@@ -193,8 +193,9 @@ fi
 echo "  GPU: $GPU_STATUS"
 
 # 8. RUNTIME SELECTION
-BINARY="$(choose_runtime_binary "$PREFERRED_RUNTIME" || true)"
-if [ -z "${BINARY:-}" ]; then
+BINARY=""
+choose_runtime_binary "$PREFERRED_RUNTIME" || true
+if [ -z "$BINARY" ]; then
     echo ""
     echo "  [ERROR] No runnable llama.cpp CLI was found in .system/"
     echo "  Expected one of:"

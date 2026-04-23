@@ -205,7 +205,7 @@ copy_from_local_downloads_if_present() {
   local candidate=""
 
   if [[ -s "$output" ]]; then
-    log "Using existing model file: $(basename -- "$output")"
+    log "Using existing asset: $(basename -- "$output")"
     return 0
   fi
 
@@ -218,7 +218,7 @@ copy_from_local_downloads_if_present() {
   fi
 
   mkdir -p "$(dirname -- "$output")"
-  log "Using local model file: $candidate"
+  log "Using local asset: $candidate"
   cp -f "$candidate" "$output"
   return 0
 }
@@ -239,8 +239,15 @@ download_or_copy_local_asset() {
 extract_tarball() {
   local archive="$1"
   local destination="$2"
+  local tar_entry=""
 
   require_cmd tar
+  while IFS= read -r tar_entry; do
+    [[ "$tar_entry" = /* ]] && fail "Unsafe archive path in $(basename -- "$archive"): $tar_entry"
+    [[ "$tar_entry" == *"../"* ]] && fail "Unsafe archive path in $(basename -- "$archive"): $tar_entry"
+    [[ "$tar_entry" == ".." ]] && fail "Unsafe archive path in $(basename -- "$archive"): $tar_entry"
+  done < <(tar -tzf "$archive")
+
   rm -rf "$destination"
   mkdir -p "$destination"
   tar -xzf "$archive" -C "$destination"
@@ -273,7 +280,9 @@ download_required_assets() {
 
   install_runtime_package "CPU runtime" "$LLAMA_CPP_CPU_PACKAGE_URL" "$system_dir/runtime-cpu"
   install_runtime_package "CUDA runtime" "$LLAMA_CPP_CUDA_PACKAGE_URL" "$system_dir/runtime-cuda"
-  find "$system_dir/runtime-cpu" "$system_dir/runtime-cuda" -type f \( -name 'llama-cli' -o -name 'llama-server' \) -exec chmod +x {} + 2>/dev/null || true
+  if [[ -d "$system_dir/runtime-cpu" && -d "$system_dir/runtime-cuda" ]]; then
+    find "$system_dir/runtime-cpu" "$system_dir/runtime-cuda" -type f \( -name 'llama-cli' -o -name 'llama-server' \) -exec chmod +x {} +
+  fi
 
   download_or_copy_local_asset \
     "$Q8_URL" \
