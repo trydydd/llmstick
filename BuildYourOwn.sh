@@ -241,9 +241,21 @@ extract_tarball() {
   local destination="$2"
   local tar_entry=""
   local tar_part=""
+  local tar_listing=""
+  local tar_type=""
   local -a tar_parts=()
 
   require_cmd tar
+  [[ -n "$destination" ]] || fail "Refusing to extract archive to an empty destination"
+  [[ "$destination" != "/" ]] || fail "Refusing to extract archive to /"
+  [[ "$destination" == "$TARGET_DIR/.system/"* ]] || fail "Refusing to extract archive outside $TARGET_DIR/.system: $destination"
+
+  while IFS= read -r tar_listing; do
+    tar_type="${tar_listing%% *}"
+    tar_type="${tar_type:0:1}"
+    [[ "$tar_type" == "l" || "$tar_type" == "h" ]] && fail "Unsafe archive entry in $(basename -- "$archive"): link entries are not allowed"
+  done < <(tar -tvzf "$archive")
+
   while IFS= read -r tar_entry; do
     [[ "$tar_entry" == /* ]] && fail "Unsafe archive path in $(basename -- "$archive"): $tar_entry"
     IFS='/' read -r -a tar_parts <<< "$tar_entry"
