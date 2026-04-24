@@ -39,7 +39,7 @@ This is the complete, open-source build for the **LLM Stick** AI flash drive. Ev
 | `Qwen3-4B-Instruct-2507-abliterated.Q8_0.gguf` | ~4.0GB | [HuggingFace](https://huggingface.co/prithivMLmods/Qwen3-4B-2507-abliterated-GGUF/tree/main/Qwen3-4B-Instruct-2507-abliterated-GGUF) |
 | `Qwen3-4B-Instruct-2507-abliterated.Q4_K_M.gguf` | ~2.3GB | [HuggingFace](https://huggingface.co/prithivMLmods/Qwen3-4B-2507-abliterated-GGUF/tree/main/Qwen3-4B-Instruct-2507-abliterated-GGUF) |
 | `Qwen3-4B-Thinking-2507-abliterated.Q8_0.gguf` | ~4.0GB | [HuggingFace](https://huggingface.co/prithivMLmods/Qwen3-4B-2507-abliterated-GGUF/tree/main/Qwen3-4B-Thinking-2507-abliterated-GGUF) |
-| `Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf` | varies | [HuggingFace](https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF/tree/main) |
+| `Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf` | ~18GB | [HuggingFace](https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF/tree/main) |
 
 The builder defaults to pinned upstream `llama.cpp` release URLs, but you can override them with:
 
@@ -118,7 +118,7 @@ LLM Stick/
    ├── runtime-cuda/            # CUDA llama.cpp package (llama-cli + llama-server)
    ├── *.Q8_0.gguf              # High performance model (~4GB)
    ├── *Thinking*.Q8_0.gguf     # Optional Thinking model (~4GB)
-   ├── *Coder*.Q4_K_M.gguf      # Optional Coder model
+   ├── *Coder*.Q4_K_M.gguf      # Optional Coder model (~18GB)
    └── *.Q4_K_M.gguf            # Efficiency model (~2.3GB)
 ```
 
