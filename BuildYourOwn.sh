@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_TARGET=""
 TARGET_DIR="${DEFAULT_TARGET}"
 FORMAT_DEVICE=""
-USB_LABEL="facts"
+USB_LABEL="figment"
 SKIP_COPY="false"
 SKIP_DOWNLOADS="false"
 FORCE="false"
@@ -62,13 +62,13 @@ Usage:
   ./BuildYourOwn.sh --target /path/to/usb [options]
 
 Required:
-  --target PATH              Mounted USB path (example: /media/$USER/facts)
+  --target PATH              Mounted USB path (example: /media/$USER/figment)
 
 Options:
   --format-device DEVICE     Format device as exFAT first (DESTRUCTIVE)
                              Linux example: /dev/sdb1
                              If TARGET/formatme exists, formatting runs without prompt
-  --label NAME               exFAT volume label when formatting (default: facts)
+  --label NAME               exFAT volume label when formatting (default: figment)
   --skip-copy                Skip copying repo files to USB
   --skip-downloads           Skip all downloads
   --force                    Do not ask for confirmation on destructive steps
@@ -92,17 +92,17 @@ Environment overrides:
   CODER_Q4_URL
 
 Examples:
-  ./BuildYourOwn.sh --target /media/$USER/facts
-  ./BuildYourOwn.sh --target /media/$USER/facts --format-device /dev/sdb1 --force
+  ./BuildYourOwn.sh --target /media/$USER/figment
+  ./BuildYourOwn.sh --target /media/$USER/figment --format-device /dev/sdb1 --force
 EOF
 }
 
 log() {
-  printf '[facts-builder] %s\n' "$*"
+  printf '[figment-builder] %s\n' "$*"
 }
 
 fail() {
-  printf '[facts-builder] ERROR: %s\n' "$*" >&2
+  printf '[figment-builder] ERROR: %s\n' "$*" >&2
   exit 1
 }
 
@@ -267,7 +267,7 @@ parse_args() {
         shift 2
         ;;
       --label)
-        USB_LABEL="${2:-facts}"
+        USB_LABEL="${2:-figment}"
         shift 2
         ;;
       --skip-copy)
@@ -639,7 +639,7 @@ EOF
 }
 
 main() {
-  TMPDIR="$(mktemp -d -t llmstick-build.XXXXXX)"
+  TMPDIR="$(mktemp -d -t figment-build.XXXXXX)"
   trap 'rm -rf "$TMPDIR"' EXIT
 
   parse_args "$@"

@@ -39,7 +39,7 @@ Use this to identify the device node (often `TRAN` = `usb`).
 
 Typical results:
 - Device: `/dev/sdb1`
-- Mount path: `/media/<your-user>/facts` or `/run/media/<your-user>/facts`
+- Mount path: `/media/<your-user>/figment` or `/run/media/<your-user>/figment`
 
 ## 3) Run the builder script
 
@@ -54,7 +54,7 @@ Use your USB mount path for `--target`:
 Examples:
 
 ```bash
-./BuildYourOwn.sh --target /media/$USER/facts
+./BuildYourOwn.sh --target /media/$USER/figment
 ```
 
 ## 4) Optional: format as exFAT from script
@@ -66,7 +66,7 @@ Formatting erases the drive.
 Linux example:
 
 ```bash
-./BuildYourOwn.sh --target /media/$USER/facts --format-device /dev/sdb1
+./BuildYourOwn.sh --target /media/$USER/figment --format-device /dev/sdb1
 ```
 
 ### `formatme` marker mode (no prompt)
@@ -140,10 +140,10 @@ The script requires a named argument:
 The Linux launcher accepts optional overrides:
 
 ```bash
-LLMSTICK_KV_PROFILE=compatibility|memory-saver|max-compression|auto
-LLMSTICK_KV_ROTATION=turbo3|planar3|iso3
-LLMSTICK_CTX_SIZE=8192
-LLMSTICK_MODEL_PROFILE=auto|thinking|coder
+FIGMENT_KV_PROFILE=compatibility|memory-saver|max-compression|auto
+FIGMENT_KV_ROTATION=turbo3|planar3|iso3
+FIGMENT_CTX_SIZE=8192
+FIGMENT_MODEL_PROFILE=auto|thinking|coder
 ./LinuxLaunch.sh [--thinking] [--coder]
 ```
 

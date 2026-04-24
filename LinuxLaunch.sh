@@ -18,10 +18,10 @@ MODEL_HIGH="$SYSTEM_DIR/Qwen3-4B-Instruct-2507-abliterated.Q8_0.gguf"
 MODEL_LOW="$SYSTEM_DIR/Qwen3-4B-Instruct-2507-abliterated.Q4_K_M.gguf"
 MODEL_THINKING="$SYSTEM_DIR/Qwen3-4B-Thinking-2507-abliterated.Q8_0.gguf"
 MODEL_CODER="$SYSTEM_DIR/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf"
-CTX_SIZE="${LLMSTICK_CTX_SIZE:-8192}"
-KV_PROFILE_REQUEST="${LLMSTICK_KV_PROFILE:-auto}"
-KV_ROTATION="${LLMSTICK_KV_ROTATION:-turbo3}"
-MODEL_PROFILE_REQUEST="${LLMSTICK_MODEL_PROFILE:-auto}"
+CTX_SIZE="${FIGMENT_CTX_SIZE:-8192}"
+KV_PROFILE_REQUEST="${FIGMENT_KV_PROFILE:-auto}"
+KV_ROTATION="${FIGMENT_KV_ROTATION:-turbo3}"
+MODEL_PROFILE_REQUEST="${FIGMENT_MODEL_PROFILE:-auto}"
 ENGINE_FALLBACK_MODE="false"
 ENGINE_VARIANT=""
 ENGINE_SERVER=""
@@ -390,10 +390,10 @@ is_crash_signal_exit() {
 
 # Clear Screen & Set Title
 parse_args "$@"
-printf "\033]0;Qwen AI - Linux Launcher\007"
+printf "\033]0;Figment - Linux Launcher\007"
 clear
 echo "----------------------------------------------------------------"
-echo "  INITIALIZING QWEN AI [LINUX]..."
+echo "  INITIALIZING FIGMENT [LINUX]..."
 echo "----------------------------------------------------------------"
 
 # 3. PRE-FLIGHT CHECK
@@ -559,7 +559,7 @@ echo ""
 echo "----------------------------------------------------------------"
 
 # 10. EXECUTION
-LAUNCH_LOG="$(mktemp -t llmstick-launch.XXXXXX)"
+LAUNCH_LOG="$(mktemp -t figment-launch.XXXXXX)"
 LAUNCH_CMD=(
     "$BINARY"
     -m "$SELECTED_MODEL"
@@ -580,7 +580,7 @@ LAUNCH_EXIT=${PIPESTATUS[0]}
 
 if [ "$LAUNCH_EXIT" -ne 0 ]; then
     # Run a tiny non-interactive probe without --log-disable so architecture errors are visible.
-    PROBE_LOG="$(mktemp -t llmstick-probe.XXXXXX)"
+    PROBE_LOG="$(mktemp -t figment-probe.XXXXXX)"
     PROBE_CMD=(
         "$BINARY"
         -m "$SELECTED_MODEL"
@@ -611,7 +611,7 @@ if [ "$LAUNCH_EXIT" -ne 0 ]; then
             CACHE_TYPE_V="f16"
             CACHE_PROFILE_NAME="Compatibility [f16/f16] [automatic fallback]"
             rm -f "$LAUNCH_LOG"
-            LAUNCH_LOG="$(mktemp -t llmstick-launch.XXXXXX)"
+            LAUNCH_LOG="$(mktemp -t figment-launch.XXXXXX)"
 
             FALLBACK_CMD=(
                 "$BINARY"
