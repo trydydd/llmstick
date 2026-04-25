@@ -1,8 +1,6 @@
-<h1 align="center">
-  <br>
-  Figment
-  <br>
-</h1>
+<p align="center">
+  <img src="figment.svg" alt="Figment" width="600">
+</p>
 
 <h4 align="center">Figmentum es</h4>
 
